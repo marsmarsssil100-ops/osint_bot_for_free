@@ -8,13 +8,14 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import config
 from modules.username import check_username
 from modules.ip_lookup import check_ip
+from modules.email_lookup import check_email
+from modules.phone_lookup import check_phone
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Временное хранение выборов пользователей
 user_languages = {}
 
 
@@ -104,7 +105,7 @@ async def handle_input(message: types.Message):
     lang = user_languages.get(message.from_user.id, "ru")
     query = message.text.strip()
 
-    # IP Address Check
+    # 1. IP Address Check
     ip_pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
     if re.match(ip_pattern, query):
         status_text = "Проверка IP..." if lang == "ru" else "Checking IP..."
@@ -113,31 +114,24 @@ async def handle_input(message: types.Message):
         await status_msg.edit_text(result)
         return
 
-    # Email Check
+    # 2. Email Check
     if "@" in query and "." in query and not query.startswith("@"):
         status_text = "Проверка Email..." if lang == "ru" else "Checking Email..."
         status_msg = await message.answer(f"{status_text} {query}")
-        await status_msg.edit_text(
-            f"Email Search Target: {query}\n\n"
-            f"Domain MX Lookup: Valid\n"
-            f"Gravatar Profile: https://www.gravatar.com/avatar/{query}"
-        )
+        result = await check_email(query)
+        await status_msg.edit_text(result)
         return
 
-    # Phone Number Check
+    # 3. Phone Number Check
     clean_phone = "".join(filter(str.isdigit, query))
     if query.startswith("+") or (len(clean_phone) >= 10 and clean_phone.isdigit()):
         status_text = "Проверка номера..." if lang == "ru" else "Checking Phone..."
         status_msg = await message.answer(f"{status_text} +{clean_phone}")
-        await status_msg.edit_text(
-            f"Phone Search Target: +{clean_phone}\n\n"
-            f"Formatted: +{clean_phone}\n"
-            f"WhatsApp Direct: https://wa.me/{clean_phone}\n"
-            f"Viber Direct: viber://chat?number=%2B{clean_phone}"
-        )
+        result = await check_phone(query)
+        await status_msg.edit_text(result)
         return
 
-    # Username Search
+    # 4. Username Search
     username = query.replace("@", "")
     status_text = f"Поиск публичных источников для {username}..." if lang == "ru" else f"Searching OSINT sources for {username}..."
     status_msg = await message.answer(status_text)
