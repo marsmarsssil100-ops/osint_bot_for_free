@@ -3,7 +3,6 @@ import aiohttp
 async def check_username(username: str) -> dict:
     results = {}
     
-    # Расширенный список популярных ресурсов и форумов
     sites = {
         "GitHub": f"https://github.com/{username}",
         "Telegram": f"https://t.me/{username}",
@@ -14,8 +13,8 @@ async def check_username(username: str) -> dict:
         "Pinterest": f"https://www.pinterest.com/{username}",
         "Twitch": f"https://www.twitch.tv/{username}",
         "SoundCloud": f"https://soundcloud.com/{username}",
-        "D3 (TJ/Mull)": f"https://d3.ru/user/{username}/posts",
-        "Pikabu": f"https://pikabu.ru>@{username}" # Базовая проверка
+        "D3": f"https://d3.ru/user/{username}/posts",
+        "Pikabu": f"https://pikabu.ru/@{username}"
     }
     
     headers = {
@@ -30,17 +29,13 @@ async def check_username(username: str) -> dict:
                     if response.status == 200:
                         text = await response.text()
                         
-                        # СПЕЦИАЛЬНАЯ ПРОВЕРКА ДЛЯ TELEGRAM
                         if site == "Telegram":
-                            # Если на странице есть эта фраза или нет кнопки "Send Message", аккаунта не существует
                             if "If you have Telegram, you can contact" in text or "you can contact @" in text:
                                 if "extra" not in text and "tgme_page_title" not in text:
                                     continue
-                                # Доп проверка: если телеграм пишет "you can contact @username right away", но нет заголовка профиля
                                 if "tgme_page_extra" not in text and "Preview channel" not in text:
                                     continue
 
-                        # ПРОВЕРКА ДЛЯ STEAM (если профиль не найден, Steam возвращает 200, но пишет сообщение)
                         if site == "Steam" and "The specified profile could not be found" in text:
                             continue
 
