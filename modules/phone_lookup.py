@@ -1,5 +1,5 @@
 import phonenumbers
-from phonenumbers import geocoder, carrier, timezone
+from phonenumbers import geocoder, carrier, timezone, number_type, PhoneNumberType
 
 async def check_phone(phone_number: str) -> str:
     try:
@@ -7,16 +7,21 @@ async def check_phone(phone_number: str) -> str:
         if not phonenumbers.is_valid_number(parsed_num):
             return "Invalid or non-existent phone number."
 
-        country = geocoder.country_name_for_number(parsed_num, "ru")
-        region = geocoder.description_for_number(parsed_num, "ru")
-        op_carrier = carrier.name_for_number(parsed_num, "ru")
+        country = geocoder.country_name_for_number(parsed_num, "en")
+        region = geocoder.description_for_number(parsed_num, "en")
+        op_carrier = carrier.name_for_number(parsed_num, "en")
         time_zones = timezone.time_zones_for_number(parsed_num)
+        
+        # Определение типа номера (мобильный / городской)
+        num_type = number_type(parsed_num)
+        type_str = "Mobile" if num_type == PhoneNumberType.MOBILE else "Fixed Line / Other"
 
         return (
             f"Phone Search Target: {phone_number}\n\n"
             f"Country: {country or 'N/A'}\n"
             f"Region: {region or 'N/A'}\n"
             f"Carrier: {op_carrier or 'N/A'}\n"
+            f"Type: {type_str}\n"
             f"Timezone: {', '.join(time_zones)}"
         )
     except Exception as e:

@@ -3,7 +3,6 @@ import aiohttp
 async def check_username(username: str) -> dict:
     results = {}
     
-    # Список сайтов для проверки
     sites = {
         "GitHub": {
             "url": f"https://github.com/{username}",
@@ -11,7 +10,7 @@ async def check_username(username: str) -> dict:
         },
         "Telegram": {
             "url": f"https://t.me/{username}",
-            "error_text": []  # Логика Telegram обрабатывается отдельно ниже
+            "error_text": [] 
         },
         "FunStat": {
             "url": f"https://funstat.bot/{username}",
@@ -66,12 +65,10 @@ async def check_username(username: str) -> dict:
                     if response.status == 200:
                         text = await response.text()
                         
-                        # Проверка на наличие текста ошибки на странице
                         has_error = any(error.lower() in text.lower() for error in errors)
                         if has_error:
                             continue
                             
-                        # Специфичная проверка для Telegram
                         if site == "Telegram":
                             if "If you have Telegram, you can contact" in text or "you can contact @" in text:
                                 if "extra" not in text and "tgme_page_title" not in text:
