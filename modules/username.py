@@ -6,27 +6,32 @@ async def check_username(username: str) -> dict:
     sites = {
         "GitHub": f"https://github.com/{username}",
         "Telegram": f"https://t.me/{username}",
-        "VK": f"https://vk.com/{username}",
-        "Habr": f"https://habr.com/ru/users/{username}",
+        "FanStat": f"https://fanstat.bot/{username}",
         "Steam": f"https://steamcommunity.com/id/{username}",
         "Reddit": f"https://www.reddit.com/user/{username}",
         "Pinterest": f"https://www.pinterest.com/{username}",
         "Twitch": f"https://www.twitch.tv/{username}",
         "SoundCloud": f"https://soundcloud.com/{username}",
-        "D3": f"https://d3.ru/user/{username}/posts",
-        "Pikabu": f"https://pikabu.ru/@{username}"
+        "VK": f"https://vk.com/{username}",
+        "Habr": f"https://habr.com/ru/users/{username}",
+        "Pikabu": f"https://pikabu.ru/@{username}",
+        "X (Twitter)": f"https://x.com/{username}",
+        "Facebook": f"https://www.facebook.com/{username}",
+        "Medium": f"https://medium.com/@{username}",
+        "Spotify": f"https://open.spotify.com/user/{username}",
+        "TikTok": f"https://www.tiktok.com/@{username}",
+        "D3": f"https://d3.ru/user/{username}/posts"
     }
     
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5"
+        "Accept-Language": "en-US,en;q=0.9"
     }
     
     async with aiohttp.ClientSession(headers=headers) as session:
         for site, url in sites.items():
             try:
-                async with session.get(url, timeout=5, allow_redirects=True) as response:
+                async with session.get(url, timeout=4, allow_redirects=True) as response:
                     if response.status == 200:
                         text = await response.text()
                         
