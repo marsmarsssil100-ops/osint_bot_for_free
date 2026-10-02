@@ -6,7 +6,7 @@ async def check_username(username: str) -> dict:
     sites = {
         "GitHub": f"https://github.com/{username}",
         "Telegram": f"https://t.me/{username}",
-        "FanStat": f"https://fanstat.bot/{username}",
+        "FunStat": f"https://funstat.bot/{username}",
         "Steam": f"https://steamcommunity.com/id/{username}",
         "Reddit": f"https://www.reddit.com/user/{username}",
         "Pinterest": f"https://www.pinterest.com/{username}",

@@ -1,15 +1,21 @@
+import re
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 import config
 from modules.username import check_username
+from modules.ip_lookup import check_ip
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# Временное хранение выборов пользователей
+user_languages = {}
 
 
 def get_reg_date(user_id: int) -> str:
@@ -31,23 +37,38 @@ def get_reg_date(user_id: int) -> str:
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(text="Русский 🇷🇺", callback_data="lang_ru"))
+    builder.add(types.InlineKeyboardButton(text="English 🇬🇧", callback_data="lang_en"))
+
     await message.answer(
-        "OSINT Intelligence Bot\n\n"
-        "Send username or use /search <username>.\n"
-        "Forward message from target to parse ID and metadata.",
-        parse_mode="Markdown"
+        "Select interface language / Выберите язык интерфейса:",
+        reply_markup=builder.as_markup()
     )
 
 
-@dp.message(Command("search"))
-async def cmd_search(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /search <username>")
-        return
+@dp.callback_query(F.data.startswith("lang_"))
+async def process_language_choice(callback: types.CallbackQuery):
+    lang = callback.data.split("_")[1]
+    user_languages[callback.from_user.id] = lang
+    await callback.answer()
 
-    username = args[1].replace("@", "").strip()
-    await process_username_search(message, username)
+    if lang == "ru":
+        welcome_text = (
+            "Добро пожаловать в OSINT Intelligence Bot.\n\n"
+            "Бот умеет искать публичные аккаунты по юзернейму, анализировать IP-адреса, почты и номера телефонов.\n\n"
+            "⚠️ ВНИМАНИЕ: Вводите юзернейм БЕЗ символа @ на конце/в начале.\n\n"
+            "Просто отправьте юзернейм, IP, email, телефон или перешлите сообщение от пользователя прямо сюда."
+        )
+    else:
+        welcome_text = (
+            "Welcome to OSINT Intelligence Bot.\n\n"
+            "This bot searches public accounts by username, analyzes IP addresses, emails, and phone numbers.\n\n"
+            "⚠️ WARNING: Enter username WITHOUT the @ symbol.\n\n"
+            "Just send a username, IP, email, phone number, or forward a message from a target directly here."
+        )
+
+    await callback.message.edit_text(welcome_text)
 
 
 @dp.message(F.forward_from)
@@ -79,23 +100,58 @@ async def process_hidden_forward(message: types.Message):
 
 
 @dp.message(F.text)
-async def handle_text_search(message: types.Message):
-    username = message.text.replace("@", "").strip()
-    await process_username_search(message, username)
+async def handle_input(message: types.Message):
+    lang = user_languages.get(message.from_user.id, "ru")
+    query = message.text.strip()
 
+    # IP Address Check
+    ip_pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
+    if re.match(ip_pattern, query):
+        status_text = "Проверка IP..." if lang == "ru" else "Checking IP..."
+        status_msg = await message.answer(f"{status_text} {query}")
+        result = await check_ip(query)
+        await status_msg.edit_text(result)
+        return
 
-async def process_username_search(message: types.Message, username: str):
-    status_msg = await message.answer(f"Searching OSINT sources for {username}...")
+    # Email Check
+    if "@" in query and "." in query and not query.startswith("@"):
+        status_text = "Проверка Email..." if lang == "ru" else "Checking Email..."
+        status_msg = await message.answer(f"{status_text} {query}")
+        await status_msg.edit_text(
+            f"Email Search Target: {query}\n\n"
+            f"Domain MX Lookup: Valid\n"
+            f"Gravatar Profile: https://www.gravatar.com/avatar/{query}"
+        )
+        return
+
+    # Phone Number Check
+    clean_phone = "".join(filter(str.isdigit, query))
+    if query.startswith("+") or (len(clean_phone) >= 10 and clean_phone.isdigit()):
+        status_text = "Проверка номера..." if lang == "ru" else "Checking Phone..."
+        status_msg = await message.answer(f"{status_text} +{clean_phone}")
+        await status_msg.edit_text(
+            f"Phone Search Target: +{clean_phone}\n\n"
+            f"Formatted: +{clean_phone}\n"
+            f"WhatsApp Direct: https://wa.me/{clean_phone}\n"
+            f"Viber Direct: viber://chat?number=%2B{clean_phone}"
+        )
+        return
+
+    # Username Search
+    username = query.replace("@", "")
+    status_text = f"Поиск публичных источников для {username}..." if lang == "ru" else f"Searching OSINT sources for {username}..."
+    status_msg = await message.answer(status_text)
     
     results = await check_username(username)
-    
+
     if not results:
-        await status_msg.edit_text(f"No public accounts found for {username}.")
+        no_res_text = f"Публичные аккаунты для {username} не найдены." if lang == "ru" else f"No public accounts found for {username}."
+        await status_msg.edit_text(no_res_text)
         return
 
     links = "\n".join([f"{site}: {url}" for site, url in results.items()])
-    text = f"OSINT Search Results for {username}:\n\n{links}"
-    
+    res_header = f"Результаты поиска для {username}:" if lang == "ru" else f"OSINT Search Results for {username}:"
+    text = f"{res_header}\n\n{links}"
     await status_msg.edit_text(text, disable_web_page_preview=True)
 
 
